@@ -1,0 +1,5 @@
+$WshShell = New-Object -ComObject WScript.Shell
+$Shortcut = $WshShell.CreateShortcut("C:\Users\Public\Payload\Payload.lnk")
+$Shortcut.TargetPath = "C:\Users\Public\Payload\ScriptRunner.exe"
+$Shortcut.WorkingDirectory = "C:\Users\Public\Payload"
+$Shortcut.Save()
